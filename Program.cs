@@ -19,12 +19,56 @@ namespace SignalAnalysis
             return Math.Sqrt(sumSquares / values.Count);
         }
 
+        static void SaveResultsToFile(string fileName, List<string> results)
+        {
+            string resultsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Results");
+            if (!Directory.Exists(resultsDirectory))
+            {
+                Directory.CreateDirectory(resultsDirectory);
+            }
+
+            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_Расчет.txt");
+            File.WriteAllLines(resultFilePath, results);
+            Console.WriteLine($"Результаты сохранены в файл: {resultFilePath}");
+        }
+
+        static List<string> GetTxtFilesInSignalFolder()
+        {
+            string signalFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Signal files");
+            if (Directory.Exists(signalFolder))
+            {
+                return Directory.GetFiles(signalFolder, "*.txt").ToList();
+            }
+            return new List<string>();
+        }
+
         static void Main(string[] args)
         {
             string filePath = null;
 
-            // Цикл для повторного ввода пути к файлу
-            while (true)
+            // Поиск TXT файлов в папке "Signal files"
+            List<string> txtFiles = GetTxtFilesInSignalFolder();
+            if (txtFiles.Count > 0)
+            {
+                Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
+                for (int i = 0; i < txtFiles.Count; i++)
+                {
+                    Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
+                }
+
+                Console.Write("Введите номер файла для выбора: ");
+                if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
+                {
+                    filePath = txtFiles[fileIndex - 1];
+                }
+                else
+                {
+                    Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
+                }
+            }
+
+            // Цикл для повторного ввода пути к файлу, если файл не был выбран из списка
+            while (filePath == null)
             {
                 Console.Write("Введите путь к файлу: ");
                 filePath = Console.ReadLine();
@@ -94,7 +138,11 @@ namespace SignalAnalysis
             // Переменные для подсчета
             int countInRange = 0;
 
-            Console.WriteLine("Результаты расчёта СКО:");
+            // Флаг для отслеживания значений СКО выше 0.5
+            bool hasStdDevAbovePoint5 = false;
+
+            List<string> results = new List<string>();
+            results.Add("Результаты расчёта СКО:");
 
             for (int i = 29; i < measurements.Count; i++)
             {
@@ -105,6 +153,7 @@ namespace SignalAnalysis
                 // Печатаем дату, время и количество секунд с начала измерения, если СКО больше 0.5
                 if (stdDev > 0.5 || stdDev > 0.7)
                 {
+                    hasStdDevAbovePoint5 = true;
                     var lastMeasurement = measurements[i];
                     TimeSpan timeSinceStart = lastMeasurement.DateTime - measurements[0].DateTime;
 
@@ -114,16 +163,28 @@ namespace SignalAnalysis
                         countAbovePoint7++;
                         // Выводим СКО с красным фоном
                         Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}");
+                        string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
+                        Console.WriteLine(result);
+                        results.Add(result);
                         Console.ResetColor();
                     }
                     else if (stdDev > 0.5 && stdDev <= 0.7)
                     {
                         countInRange++;
                         // Выводим СКО без изменения цвета
-                        Console.WriteLine($"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}");
+                        string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
+                        Console.WriteLine(result);
+                        results.Add(result);
                     }
                 }
+            }
+
+            // Если нет значений СКО выше 0.5, выводим сообщение
+            if (!hasStdDevAbovePoint5)
+            {
+                string noStdDevAbovePoint5Message = "Нет значений СКО выше 0.5";
+                Console.WriteLine(noStdDevAbovePoint5Message);
+                results.Add(noStdDevAbovePoint5Message);
             }
 
             // Расчет процента превышений
@@ -132,49 +193,84 @@ namespace SignalAnalysis
 
             // Выводим результат
             Console.WriteLine();
-            Console.WriteLine($"Процент превышений СКО выше 0.7: {percentageAbovePoint7:F2}%");
-            Console.WriteLine($"Процент превышений СКО в пределах от 0.5 до 0.7: {percentageInRange:F2}%");
+            string resultAbovePoint7 = $"Процент превышений СКО выше 0.7: {percentageAbovePoint7:F3}%";
+            string resultInRange = $"Процент превышений СКО в пределах от 0.5 до 0.7: {percentageInRange:F3}%";
+            Console.WriteLine(resultAbovePoint7);
+            Console.WriteLine(resultInRange);
+            results.Add(resultAbovePoint7);
+            results.Add(resultInRange);
 
-            Console.WriteLine("Введите начальный индекс (например, 1800):");
-            int startIndex = int.Parse(Console.ReadLine() ?? "0");
-
-            Console.WriteLine("Введите конечный индекс (например, 3600):");
-            int endIndex = int.Parse(Console.ReadLine() ?? "0");
-
-            // Расчёт разницы между максимальным и минимальным значениями сигнала
-            if (startIndex >= measurements.Count)
+            while (true)
             {
-                Console.WriteLine("Недостаточно данных для расчёта для заданного периода.");
-            }
-            else
-            {
-                var periodMeasurements = measurements.GetRange(startIndex, endIndex - startIndex + 1);
-                double maxSignal = periodMeasurements.Max(m => m.Signal);
-                double minSignal = periodMeasurements.Min(m => m.Signal);
-                double difference = maxSignal - minSignal;
+                Console.WriteLine("\nВведите начальный и конечный индекс измерений (или нажмите Enter для выхода):");
 
-                int maxIndex = startIndex + periodMeasurements.FindIndex(m => m.Signal == maxSignal) + 1;
-                int minIndex = startIndex + periodMeasurements.FindIndex(m => m.Signal == minSignal) + 1;
+                Console.Write("Начальный индекс: ");
+                string startInput = Console.ReadLine();
 
-                // Цветной вывод числового значения разницы в зависимости от величины разницы
-                Console.Write($"Разница максимального и минимального значения сигнала: ");
-                if (difference > 30)
+                // Проверка на выход
+                if (string.IsNullOrWhiteSpace(startInput)) break;
+
+                Console.Write("Конечный индекс: ");
+                string endInput = Console.ReadLine();
+
+                if (string.IsNullOrWhiteSpace(endInput)) break;
+
+                if (int.TryParse(startInput, out int startIndex) && int.TryParse(endInput, out int endIndex))
                 {
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    if (startIndex < 0 || startIndex >= measurements.Count || startIndex > endIndex)
+                    {
+                        Console.WriteLine("Ошибка: некорректные индексы.");
+                        continue;
+                    }
+
+                    // Если записей меньше 3600, автоматически рассчитываем разницу от заданной до крайней существующей
+                    if (measurements.Count < 3600)
+                    {
+                        endIndex = measurements.Count - 1;
+                    }
+                    else if (endIndex < 0 || endIndex >= measurements.Count)
+                    {
+                        Console.WriteLine("Ошибка: некорректные индексы.");
+                        continue;
+                    }
+
+                    var periodMeasurements = measurements.GetRange(startIndex, endIndex - startIndex + 1);
+                    double maxSignal = periodMeasurements.Max(m => m.Signal);
+                    double minSignal = periodMeasurements.Min(m => m.Signal);
+                    double difference = maxSignal - minSignal;
+
+                    // Цветной вывод числового значения разницы
+                    Console.Write($"Разница максимального и минимального значения сигнала: ");
+                    if (difference > 30)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    }
+                    else if (difference > 15)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                    }
+                    string differenceResult = $"{difference:F3}";
+                    Console.WriteLine(differenceResult);
+                    results.Add($"Разница максимального и минимального значения сигнала: {differenceResult}");
+                    Console.ResetColor();
+
+                    string maxResult = $"Максимум: {maxSignal:F3}, Время: {periodMeasurements.First(m => m.Signal == maxSignal).DateTime}, Строка: {measurements.IndexOf(periodMeasurements.First(m => m.Signal == maxSignal)) + 1}";
+                    string minResult = $"Минимум: {minSignal:F3}, Время: {periodMeasurements.First(m => m.Signal == minSignal).DateTime}, Строка: {measurements.IndexOf(periodMeasurements.First(m => m.Signal == minSignal)) + 1}";
+                    Console.WriteLine(maxResult);
+                    Console.WriteLine(minResult);
+                    results.Add(maxResult);
+                    results.Add(minResult);
                 }
-                else if (difference > 15)
+                else
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("Ошибка: введены некорректные значения.");
                 }
-                Console.WriteLine($"{difference:F3}");
-
-                // Сброс цвета после вывода
-                Console.ResetColor();
-
-                Console.WriteLine($"Максимум: {maxSignal:F3}, Время: {periodMeasurements.First(m => m.Signal == maxSignal).DateTime}, Строка: {maxIndex}");
-                Console.WriteLine($"Минимум: {minSignal:F3}, Время: {periodMeasurements.First(m => m.Signal == minSignal).DateTime}, Строка: {minIndex}");
             }
 
+            SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
+
+            Console.WriteLine("Программа завершена. Нажмите любую клавишу");
+            Console.ReadLine();
         }
     }
 }
