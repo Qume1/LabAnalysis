@@ -27,7 +27,9 @@ namespace SignalAnalysis
                 Directory.CreateDirectory(resultsDirectory);
             }
 
-            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_Расчет.txt");
+            // Форматируем текущую дату и время для использования в названии файла
+            string dateTimeNow = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_{dateTimeNow}_Расчет.txt");
             File.WriteAllLines(resultFilePath, results);
             Console.WriteLine($"Результаты сохранены в файл: {resultFilePath}");
         }
@@ -95,8 +97,6 @@ namespace SignalAnalysis
 
             lines.RemoveAt(0); // Удаляем строку заголовка
 
-            // Регулярное выражение для извлечения даты, времени и значения сигнала.
-            // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
             string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
             Regex regex = new Regex(pattern);
@@ -132,6 +132,22 @@ namespace SignalAnalysis
                 return;
             }
 
+            // Ввод пользователем минимального значения СКО для вывода
+            Console.Write("Введите минимальное значение СКО для вывода: ");
+            if (!double.TryParse(Console.ReadLine(), out double minStdDev))
+            {
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0.7");
+                minStdDev = 0.7;
+            }
+
+            // Ввод пользователем начальной строки для расчета процента
+            Console.Write("Введите начальную строку (в секундах) для расчета процента: ");
+            if (!double.TryParse(Console.ReadLine(), out double startSeconds))
+            {
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0");
+                startSeconds = 0;
+            }
+
             // Считаем количество превышений СКО выше 0.7
             int countAbovePoint7 = 0;
 
@@ -144,61 +160,77 @@ namespace SignalAnalysis
             List<string> results = new List<string>();
             results.Add("Результаты расчёта СКО:");
 
+            List<double> stdDevs = new List<double>();
+
             for (int i = 29; i < measurements.Count; i++)
             {
                 var window = measurements.Skip(i - 29).Take(30).ToList();
                 List<double> signals = window.Select(m => m.Signal).ToList();
                 double stdDev = CalculateStdDev(signals);
 
-                // Печатаем дату, время и количество секунд с начала измерения, если СКО больше 0.5
-                if (stdDev > 0.5 || stdDev > 0.7)
-                {
-                    hasStdDevAbovePoint5 = true;
-                    var lastMeasurement = measurements[i];
-                    TimeSpan timeSinceStart = lastMeasurement.DateTime - measurements[0].DateTime;
+                var lastMeasurement = measurements[i];
+                TimeSpan timeSinceStart = lastMeasurement.DateTime - measurements[0].DateTime;
 
-                    // Если СКО больше 0.7, увеличиваем счетчик
-                    if (stdDev > 0.7)
+                // Печатаем дату, время и количество секунд с начала измерения, если СКО выше указанного порога и время больше начального времени
+                if (timeSinceStart.TotalSeconds >= startSeconds)
+                {
+                    stdDevs.Add(stdDev);
+
+                    if (stdDev > minStdDev)
                     {
-                        countAbovePoint7++;
-                        // Выводим СКО с красным фоном
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
-                        Console.WriteLine(result);
-                        results.Add(result);
-                        Console.ResetColor();
-                    }
-                    else if (stdDev > 0.5 && stdDev <= 0.7)
-                    {
-                        countInRange++;
-                        // Выводим СКО без изменения цвета
-                        string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
-                        Console.WriteLine(result);
-                        results.Add(result);
+                        hasStdDevAbovePoint5 = true;
+
+                        // Если СКО больше 0.7, увеличиваем счетчик
+                        if (stdDev > 0.7)
+                        {
+                            countAbovePoint7++;
+                            // Выводим СКО с красным фоном
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
+                            Console.WriteLine(result);
+                            results.Add(result);
+                            Console.ResetColor();
+                        }
+                        else
+                        {
+                            countInRange++;
+                            // Выводим СКО без изменения цвета
+                            string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
+                            Console.WriteLine(result);
+                            results.Add(result);
+                        }
                     }
                 }
             }
 
-            // Если нет значений СКО выше 0.5, выводим сообщение
+            // Если нет значений СКО выше minStdDev, выводим сообщение
             if (!hasStdDevAbovePoint5)
             {
-                string noStdDevAbovePoint5Message = "Нет значений СКО выше 0.5";
+                string noStdDevAbovePoint5Message = $"Нет значений СКО выше {minStdDev}";
                 Console.WriteLine(noStdDevAbovePoint5Message);
                 results.Add(noStdDevAbovePoint5Message);
             }
 
             // Расчет процента превышений
             double percentageAbovePoint7 = (double)countAbovePoint7 / measurements.Count * 100;
-            double percentageInRange = (double)countInRange / measurements.Count * 100;
 
             // Выводим результат
             Console.WriteLine();
             string resultAbovePoint7 = $"Процент превышений СКО выше 0.7: {percentageAbovePoint7:F3}%";
-            string resultInRange = $"Процент превышений СКО в пределах от 0.5 до 0.7: {percentageInRange:F3}%";
             Console.WriteLine(resultAbovePoint7);
-            Console.WriteLine(resultInRange);
             results.Add(resultAbovePoint7);
-            results.Add(resultInRange);
+
+            // Вывод общего времени измерения сигнала
+            int totalMeasurementTime = measurements.Count;
+            string totalMeasurementTimeMessage = $"Общее время измерения сигнала: {totalMeasurementTime} секунд";
+            Console.WriteLine(totalMeasurementTimeMessage);
+            results.Add(totalMeasurementTimeMessage);
+
+            // Расчет и вывод среднего значения СКО начиная с указанного времени
+            double averageStdDev = stdDevs.Average();
+            string averageStdDevMessage = $"Среднее значение СКО начиная с {startSeconds} секунд: {averageStdDev:F3}";
+            Console.WriteLine(averageStdDevMessage);
+            results.Add(averageStdDevMessage);
 
             while (true)
             {
