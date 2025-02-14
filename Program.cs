@@ -144,8 +144,8 @@ namespace SignalAnalysis
             Console.Write("Введите начальную строку (в секундах) для расчета процента: ");
             if (!double.TryParse(Console.ReadLine(), out double startSeconds))
             {
-                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0");
-                startSeconds = 0;
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 1800");
+                startSeconds = 1800;
             }
 
             // Считаем количество превышений СКО выше 0.7
