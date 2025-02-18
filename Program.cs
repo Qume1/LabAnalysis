@@ -13,10 +13,10 @@ namespace SignalAnalysis
     {
         static double CalculateStdDev(List<double> values)
         {
-            if (values.Count == 0) return 0;
+            if (values.Count < 2) return 0; // Unbiased estimate requires at least two values
             double mean = values.Average();
             double sumSquares = values.Select(x => (x - mean) * (x - mean)).Sum();
-            return Math.Sqrt(sumSquares / values.Count);
+            return Math.Sqrt(sumSquares / (values.Count - 1)); // Use N-1 for unbiased estimate
         }
 
         static void SaveResultsToFile(string fileName, List<string> results)
