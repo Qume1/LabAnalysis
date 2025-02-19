@@ -454,9 +454,172 @@ namespace SignalAnalysis
             ProcessSecondFile(secondFilePath);
         }
 
+        static double CalculateAreaUnderCurve(List<Measurement> measurements, double regressionLine)
+        {
+            double area = 0;
+            foreach (var measurement in measurements)
+            {
+                area += Math.Abs(measurement.Signal - regressionLine);
+            }
+            return area;
+        }
+
+        static double CalculateRegressionLine(List<Measurement> measurements)
+        {
+            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+            int n = measurements.Count;
+
+            for (int i = 0; i < n; i++)
+            {
+                double x = i;
+                double y = measurements[i].Signal;
+                sumX += x;
+                sumY += y;
+                sumXY += x * y;
+                sumX2 += x * x;
+            }
+
+            double slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+            double intercept = (sumY - slope * sumX) / n;
+
+            return slope * (n / 2.0) + intercept; // Regression line at the midpoint
+        }
+
+        static void ProcessVirtualSamplesFile(string filePath, double divisor)
+        {
+            var lines = File.ReadAllLines(filePath).ToList();
+            if (lines.Count < 1800 + 60)
+            {
+                Console.WriteLine("Файл не содержит достаточного количества измерений.");
+                return;
+            }
+
+            lines.RemoveAt(0);
+
+            // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
+            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
+            Regex regex = new Regex(pattern);
+
+            List<Measurement> measurements = new List<Measurement>();
+
+            foreach (var line in lines)
+            {
+                Match match = regex.Match(line);
+                if (match.Success)
+                {
+                    string dateStr = match.Groups["date"].Value;
+                    string timeStr = match.Groups["time"].Value;
+                    string signalStr = match.Groups["signal"].Value.Replace(',', '.');
+
+                    if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
+                        && double.TryParse(signalStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double signalVal))
+                    {
+                        measurements.Add(new Measurement { DateTime = dt, Signal = signalVal });
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Ошибка при парсинге сигнала: {signalStr}");
+                    }
+                }
+            }
+
+            if (measurements.Count < 1800 + 60)
+            {
+                Console.WriteLine("Недостаточно данных для расчёта по 60 измерениям начиная с 1800 строки.");
+                return;
+            }
+
+            List<double> areas = new List<double>();
+            int countAbovePoint2 = 0;
+            int totalCount = 0;
+
+            for (int i = 1800; i <= measurements.Count - 60; i += 70) // 60 lines segment with 10 lines gap
+            {
+                var segment = measurements.Skip(i).Take(60).ToList();
+                var beforeSegment = measurements.Skip(i - 5).Take(5).ToList();
+                var afterSegment = measurements.Skip(i + 55).Take(5).ToList();
+
+                double regressionLine = (beforeSegment.Average(m => m.Signal) + afterSegment.Average(m => m.Signal)) / 2;
+                double area = CalculateAreaUnderCurve(segment, regressionLine) / divisor;
+                areas.Add(area);
+            }
+
+            List<string> results = new List<string>();
+            for (int i = 0; i <= areas.Count - 5; i += 5)
+            {
+                var group = areas.Skip(i).Take(5).ToList();
+                if (group.Count == 5)
+                {
+                    double stdDev = CalculateStdDev(group) * 3;
+                    if (stdDev > 0.2)
+                    {
+                        countAbovePoint2++;
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    }
+                    string result = $"Предел обнаружения для группы начиная с {i / 5 + 1}-ой группы: {stdDev:F3}";
+                    Console.WriteLine(result);
+                    results.Add(result);
+                    Console.ResetColor();
+                    totalCount++;
+                }
+            }
+
+            double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
+            Console.WriteLine($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
+            results.Add($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
+
+            SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath) + "_VirtualSamples", results);
+        }
+
         static void CalculateVirtualSamples()
         {
-            Console.WriteLine("Функционал виртуальных проб будет реализован позже.");
+            string filePath = null;
+
+            List<string> txtFiles = GetTxtFilesInSignalFolder();
+            if (txtFiles.Count > 0)
+            {
+                Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
+                for (int i = 0; i < txtFiles.Count; i++)
+                {
+                    Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
+                }
+
+                Console.Write("Введите номер файла для выбора: ");
+                if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
+                {
+                    filePath = txtFiles[fileIndex - 1];
+                }
+                else
+                {
+                    Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
+                }
+            }
+
+            while (filePath == null)
+            {
+                Console.Write("Введите путь к файлу: ");
+                filePath = Console.ReadLine();
+
+                if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+                {
+                    break;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
+                Console.ResetColor();
+            }
+
+            Console.WriteLine($"Файл успешно найден: {filePath}");
+
+            Console.Write("Введите значение для деления площади (по умолчанию 252.1): ");
+            if (!double.TryParse(Console.ReadLine(), out double divisor))
+            {
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 252.1");
+                divisor = 252.1;
+            }
+
+            ProcessVirtualSamplesFile(filePath, divisor);
         }
 
         static void Main(string[] args)
