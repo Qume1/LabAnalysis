@@ -138,7 +138,7 @@ namespace SignalAnalysis
                     Console.ForegroundColor = ConsoleColor.Red;
                 }
 
-                string result = $"СКО: {stdDev:F3} {timeInterval}";
+                string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}";
                 Console.WriteLine(result);
                 results.Add(result);
                 Console.ResetColor();
@@ -146,7 +146,7 @@ namespace SignalAnalysis
             }
 
             double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
-            string percentageResult = $"Процент превышений СКО выше 0.2: {percentageAbovePoint2:F3}%";
+            string percentageResult = $"Процент превышений Предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%";
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
@@ -462,6 +462,70 @@ namespace SignalAnalysis
                     {
                         SaveFilePath("secondFilePath", secondFilePath);
                         break;
+                        static List<string> ReadFileLines(string filePath)
+                        {
+                            try
+                            {
+                                return File.ReadAllLines(filePath).ToList();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Ошибка при чтении файла: {ex.Message}");
+                                return new List<string>();
+                            }
+                        }
+
+                        static bool TryParseMeasurement(string line, out Measurement measurement)
+                        {
+                            measurement = null;
+                            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
+                            Regex regex = new Regex(pattern);
+                            Match match = regex.Match(line);
+
+                            if (match.Success)
+                            {
+                                string dateStr = match.Groups["date"].Value;
+                                string timeStr = match.Groups["time"].Value;
+                                string signalStr = match.Groups["signal"].Value.Replace(',', '.');
+
+                                if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
+                                    && double.TryParse(signalStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double signalVal))
+                                {
+                                    measurement = new Measurement { DateTime = dt, Signal = signalVal };
+                                    return true;
+                                }
+                            }
+
+                            return false;
+                        }
+
+                        static void ProcessFirstFile(string filePath)
+                        {
+                            var lines = ReadFileLines(filePath);
+                            if (lines.Count < 2)
+                            {
+                                Console.WriteLine("Файл не содержит измерений.");
+                                return;
+                            }
+
+                            lines.RemoveAt(0);
+
+                            List<Measurement> measurements = new List<Measurement>();
+
+                            foreach (var line in lines)
+                            {
+                                if (TryParseMeasurement(line, out Measurement measurement))
+                                {
+                                    measurements.Add(measurement);
+                                }
+                                else
+                                {
+                                    Console.WriteLine($"Ошибка при парсинге строки: {line}");
+                                }
+                            }
+
+                            // Остальная часть метода ProcessFirstFile...
+                        }
                     }
 
                     Console.ForegroundColor = ConsoleColor.Red;
