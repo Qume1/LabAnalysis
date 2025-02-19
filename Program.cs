@@ -30,7 +30,7 @@ namespace SignalAnalysis
             string dateTimeNow = DateTime.Now.ToString("yyyyMMdd_HHmmss");
             string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_{dateTimeNow}_Расчет.txt");
             File.WriteAllLines(resultFilePath, results);
-            Console.WriteLine($"Результаты сохранены в файл: {resultFilePath}");
+            Console.WriteLine($"\nРезультаты сохранены в файл: {resultFilePath}\n");
         }
 
         static List<string> GetTxtFilesInSignalFolder()
@@ -78,11 +78,11 @@ namespace SignalAnalysis
         {
             var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Skip first three lines
 
-            Console.Write("Введите дату измерений (дд.мм.гггг): ");
+            Console.Write("\nВведите дату измерений (дд.мм.гггг): ");
             string inputDate = Console.ReadLine();
             if (!DateTime.TryParseExact(inputDate, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime filterDate))
             {
-                Console.WriteLine("Некорректная дата.");
+                Console.WriteLine("\nНекорректная дата.\n");
                 return;
             }
 
@@ -115,7 +115,7 @@ namespace SignalAnalysis
 
             if (values.Count < 5)
             {
-                Console.WriteLine("Недостаточно данных для расчёта.");
+                Console.WriteLine("\nНедостаточно данных для расчёта.\n");
                 return;
             }
 
@@ -146,7 +146,7 @@ namespace SignalAnalysis
             }
 
             double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
-            string percentageResult = $"Процент превышений Предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%";
+            string percentageResult = $"\nПроцент превышений Предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%\n";
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
@@ -161,7 +161,7 @@ namespace SignalAnalysis
 
             if (startIndex == -1 || endIndex == -1 || startIndex >= endIndex)
             {
-                Console.WriteLine("Недостаточно данных для автоматического расчета диапазона.");
+                Console.WriteLine("\nНедостаточно данных для автоматического расчета диапазона.\n");
                 return;
             }
 
@@ -170,7 +170,7 @@ namespace SignalAnalysis
             double minSignal = periodMeasurements.Min(m => m.Signal);
             double difference = maxSignal - minSignal;
 
-            Console.Write($"Автоматически рассчитанная разница максимального и минимального значения сигнала (1800-3600 секунд): ");
+            Console.Write($"\nАвтоматически рассчитанная разница максимального и минимального значения сигнала (1800-3600 секунд): ");
             if (difference > 30)
             {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -197,7 +197,7 @@ namespace SignalAnalysis
             var lines = File.ReadAllLines(filePath).ToList();
             if (lines.Count < 2)
             {
-                Console.WriteLine("Файл не содержит измерений.");
+                Console.WriteLine("\nФайл не содержит измерений.\n");
                 return;
             }
 
@@ -225,28 +225,28 @@ namespace SignalAnalysis
                     }
                     else
                     {
-                        Console.WriteLine($"Ошибка при парсинге сигнала: {signalStr}");
+                        Console.WriteLine($"\nОшибка при парсинге сигнала: {signalStr}\n");
                     }
                 }
             }
 
             if (measurements.Count < 30)
             {
-                Console.WriteLine("Недостаточно данных для расчёта по 30 измерениям.");
+                Console.WriteLine("\nНедостаточно данных для расчёта по 30 измерениям.\n");
                 return;
             }
 
-            Console.Write("Введите минимальное значение СКО для вывода: ");
+            Console.Write("\nВведите минимальное значение СКО для вывода: ");
             if (!double.TryParse(Console.ReadLine(), out double minStdDev))
             {
                 Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0.7");
                 minStdDev = 0.7;
             }
 
-            Console.Write("Введите начальную строку (в секундах) для расчета процента: ");
+            Console.Write("\nВведите начальную строку (в секундах) для расчета процента: ");
             if (!double.TryParse(Console.ReadLine(), out double startSeconds))
             {
-                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 1800");
+                Console.WriteLine("\nНекорректное значение. Используется значение по умолчанию: 1800\n");
                 startSeconds = 1800;
             }
 
@@ -298,7 +298,7 @@ namespace SignalAnalysis
 
             if (!hasStdDevAbovePoint5)
             {
-                string noStdDevAbovePoint5Message = $"Нет значений СКО выше {minStdDev}";
+                string noStdDevAbovePoint5Message = $"\nНет значений СКО выше {minStdDev}\n";
                 Console.WriteLine(noStdDevAbovePoint5Message);
                 results.Add(noStdDevAbovePoint5Message);
             }
@@ -306,17 +306,17 @@ namespace SignalAnalysis
             double percentageAbovePoint7 = (double)countAbovePoint7 / measurements.Count * 100;
 
             Console.WriteLine();
-            string resultAbovePoint7 = $"Процент превышений СКО выше 0.7: {percentageAbovePoint7:F3}%";
+            string resultAbovePoint7 = $"\nПроцент превышений СКО выше 0.7: {percentageAbovePoint7:F3}%\n";
             Console.WriteLine(resultAbovePoint7);
             results.Add(resultAbovePoint7);
 
             int totalMeasurementTime = measurements.Count;
-            string totalMeasurementTimeMessage = $"Общее время измерения сигнала: {totalMeasurementTime} секунд";
+            string totalMeasurementTimeMessage = $"\nОбщее время измерения сигнала: {totalMeasurementTime} секунд\n";
             Console.WriteLine(totalMeasurementTimeMessage);
             results.Add(totalMeasurementTimeMessage);
 
             double averageStdDev = stdDevs.Average();
-            string averageStdDevMessage = $"Среднее значение СКО начиная с {startSeconds} секунд: {averageStdDev:F3}";
+            string averageStdDevMessage = $"\nСреднее значение СКО начиная с {startSeconds} секунд: {averageStdDev:F3}\n";
             Console.WriteLine(averageStdDevMessage);
             results.Add(averageStdDevMessage);
 
@@ -326,12 +326,12 @@ namespace SignalAnalysis
             {
                 Console.WriteLine("\nВведите начальный и конечный индекс измерений (или нажмите Enter для выхода):");
 
-                Console.Write("Начальный индекс: ");
+                Console.Write("\nНачальный индекс: ");
                 string startInput = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(startInput)) break;
 
-                Console.Write("Конечный индекс: ");
+                Console.Write("\nКонечный индекс: ");
                 string endInput = Console.ReadLine();
 
                 if (string.IsNullOrWhiteSpace(endInput)) break;
@@ -340,13 +340,13 @@ namespace SignalAnalysis
                 {
                     if (startIndex < 0 || startIndex >= measurements.Count || startIndex > endIndex)
                     {
-                        Console.WriteLine("Ошибка: некорректные индексы.");
+                        Console.WriteLine("\nОшибка: некорректные индексы.\n");
                         continue;
                     }
 
                     if (endIndex < 0 || endIndex >= measurements.Count)
                     {
-                        Console.WriteLine("Ошибка: некорректные индексы.");
+                        Console.WriteLine("\nОшибка: некорректные индексы.\n");
                         continue;
                     }
 
@@ -355,7 +355,7 @@ namespace SignalAnalysis
                     double minSignal = periodMeasurements.Min(m => m.Signal);
                     double difference = maxSignal - minSignal;
 
-                    Console.Write($"Разница максимального и минимального значения сигнала: ");
+                    Console.Write($"\nРазница максимального и минимального значения сигнала: ");
                     if (difference > 30)
                     {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -378,7 +378,7 @@ namespace SignalAnalysis
                 }
                 else
                 {
-                    Console.WriteLine("Ошибка: введены некорректные значения.");
+                    Console.WriteLine("\nОшибка: введены некорректные значения.\n");
                 }
             }
 
@@ -392,26 +392,26 @@ namespace SignalAnalysis
             List<string> txtFiles = GetTxtFilesInSignalFolder();
             if (txtFiles.Count > 0)
             {
-                Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
+                Console.WriteLine("\nНайдены следующие файлы в папке 'Signal files':");
                 for (int i = 0; i < txtFiles.Count; i++)
                 {
-                    Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
+                    Console.WriteLine($"\n{i + 1}. {Path.GetFileName(txtFiles[i])}");
                 }
 
-                Console.Write("Введите номер файла для выбора: ");
+                Console.Write("\nВведите номер файла для выбора: ");
                 if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
                 {
                     filePath = txtFiles[fileIndex - 1];
                 }
                 else
                 {
-                    Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
+                    Console.WriteLine("\nНекорректный выбор. Переход к ручному вводу пути к файлу.\n");
                 }
             }
 
             while (filePath == null)
             {
-                Console.Write("Введите путь к файлу: ");
+                Console.Write("\nВведите путь к файлу: ");
                 filePath = Console.ReadLine();
 
                 if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
@@ -420,11 +420,11 @@ namespace SignalAnalysis
                 }
 
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
+                Console.WriteLine("\nФайл не найден или путь некорректен. Попробуйте ещё раз.\n");
                 Console.ResetColor();
             }
 
-            Console.WriteLine($"Файл успешно найден: {filePath}");
+            Console.WriteLine($"\nФайл успешно найден: {filePath}\n");
 
             ProcessFirstFile(filePath);
         }
@@ -436,7 +436,7 @@ namespace SignalAnalysis
             {
                 while (true)
                 {
-                    Console.Write("Введите путь ко второму файлу: ");
+                    Console.Write("\nВведите путь ко второму файлу: ");
                     secondFilePath = Console.ReadLine();
 
                     if (!string.IsNullOrWhiteSpace(secondFilePath) && File.Exists(secondFilePath))
@@ -446,7 +446,7 @@ namespace SignalAnalysis
                     }
 
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
+                    Console.WriteLine("\nФайл не найден или путь некорректен. Попробуйте ещё раз.\n");
                     Console.ResetColor();
                 }
             }
@@ -497,7 +497,7 @@ namespace SignalAnalysis
             lines.RemoveAt(0);
 
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
-            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
+            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)"; 
             Regex regex = new Regex(pattern);
 
             List<Measurement> measurements = new List<Measurement>();
@@ -578,26 +578,26 @@ namespace SignalAnalysis
             List<string> txtFiles = GetTxtFilesInSignalFolder();
             if (txtFiles.Count > 0)
             {
-                Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
+                Console.WriteLine("\nНайдены следующие файлы в папке 'Signal files':");
                 for (int i = 0; i < txtFiles.Count; i++)
                 {
-                    Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
+                    Console.WriteLine($"\n{i + 1}. {Path.GetFileName(txtFiles[i])}");
                 }
 
-                Console.Write("Введите номер файла для выбора: ");
+                Console.Write("\nВведите номер файла для выбора: ");
                 if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
                 {
                     filePath = txtFiles[fileIndex - 1];
                 }
                 else
                 {
-                    Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
+                    Console.WriteLine("\nНекорректный выбор. Переход к ручному вводу пути к файлу.\n");
                 }
             }
 
             while (filePath == null)
             {
-                Console.Write("Введите путь к файлу: ");
+                Console.Write("\nВведите путь к файлу: ");
                 filePath = Console.ReadLine();
 
                 if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
@@ -606,11 +606,11 @@ namespace SignalAnalysis
                 }
 
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
+                Console.WriteLine("\nФайл не найден или путь некорректен. Попробуйте ещё раз.\n");
                 Console.ResetColor();
             }
 
-            Console.WriteLine($"Файл успешно найден: {filePath}");
+            Console.WriteLine($"\nФайл успешно найден: {filePath}\n");
 
             Console.Write("Введите значение для деления площади (по умолчанию 252.1): ");
             if (!double.TryParse(Console.ReadLine(), out double divisor))
@@ -622,6 +622,20 @@ namespace SignalAnalysis
             ProcessVirtualSamplesFile(filePath, divisor);
         }
 
+        static void ClearConfigFile()
+        {
+            string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
+            if (File.Exists(configFilePath))
+            {
+                File.WriteAllText(configFilePath, string.Empty);
+                Console.WriteLine("Файл config.txt успешно очищен.");
+            }
+            else
+            {
+                Console.WriteLine("Файл config.txt не найден.");
+            }
+        }
+
         static void Main(string[] args)
         {
             while (true)
@@ -630,7 +644,8 @@ namespace SignalAnalysis
                 Console.WriteLine("1. Расчет СКО и разницы");
                 Console.WriteLine("2. Расчет предела обнаружения");
                 Console.WriteLine("3. Виртуальные пробы");
-                Console.WriteLine("4. Выход");
+                Console.WriteLine("4. Очистить config.txt");
+                Console.WriteLine("5. Выход");
 
                 Console.Write("Введите номер выбора: ");
                 string choice = Console.ReadLine();
@@ -647,6 +662,9 @@ namespace SignalAnalysis
                         CalculateVirtualSamples();
                         break;
                     case "4":
+                        ClearConfigFile();
+                        break;
+                    case "5":
                         return;
                     default:
                         Console.WriteLine("Некорректный выбор.");
