@@ -6,7 +6,10 @@
 	<SelfContained>true</SelfContained>
 	<OutputType>Exe</OutputType>
     <TargetFramework>net6.0</TargetFramework>
-    <RootNamespace>Lab_Analysis</RootNamespace>
+	<DebugType>none</DebugType>
+	<PublishTrimmed>true</PublishTrimmed>
+	<PublishReadyToRun>true</PublishReadyToRun>
+	  <RootNamespace>Lab_Analysis</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PackageIcon>Icon.png</PackageIcon>
