@@ -203,11 +203,7 @@ namespace SignalAnalysis
 
             lines.RemoveAt(0);
 
-<<<<<<< HEAD
-            
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
-=======
->>>>>>> 6f996702159c277e97e3d270ed6450f598931c18
             string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
             Regex regex = new Regex(pattern);
 
@@ -389,72 +385,52 @@ namespace SignalAnalysis
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
         }
 
-        static void Main(string[] args)
+        static void CalculateStandardDeviationAndDifference()
         {
-            Console.Write("Хотите пропустить открытие и работу с первым файлом? (да/нет): ");
-            string skipFirstFileInput = Console.ReadLine();
-            bool skipFirstFile = skipFirstFileInput.Equals("да", StringComparison.OrdinalIgnoreCase);
+            string filePath = null;
 
-            bool processedFirstFile = false;
-
-            if (!skipFirstFile)
+            List<string> txtFiles = GetTxtFilesInSignalFolder();
+            if (txtFiles.Count > 0)
             {
-                string filePath = null;
-
-                List<string> txtFiles = GetTxtFilesInSignalFolder();
-                if (txtFiles.Count > 0)
+                Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
+                for (int i = 0; i < txtFiles.Count; i++)
                 {
-                    Console.WriteLine("Найдены следующие файлы в папке 'Signal files':");
-                    for (int i = 0; i < txtFiles.Count; i++)
-                    {
-                        Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
-                    }
-
-                    Console.Write("Введите номер файла для выбора: ");
-                    if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
-                    {
-                        filePath = txtFiles[fileIndex - 1];
-                    }
-                    else
-                    {
-                        Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
-                    }
+                    Console.WriteLine($"{i + 1}. {Path.GetFileName(txtFiles[i])}");
                 }
 
-                while (filePath == null)
+                Console.Write("Введите номер файла для выбора: ");
+                if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
                 {
-                    Console.Write("Введите путь к файлу: ");
-                    filePath = Console.ReadLine();
-
-                    if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
-                    {
-                        break;
-                    }
-
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
-                    Console.ResetColor();
+                    filePath = txtFiles[fileIndex - 1];
                 }
-
-                Console.WriteLine($"Файл успешно найден: {filePath}");
-
-                ProcessFirstFile(filePath);
-                processedFirstFile = true;
-            }
-
-            if (processedFirstFile)
-            {
-                Console.Write("Хотите пропустить работу со вторым файлом? (да/нет): ");
-                string skipSecondFileInput = Console.ReadLine();
-                bool skipSecondFile = skipSecondFileInput.Equals("да", StringComparison.OrdinalIgnoreCase);
-
-                if (skipSecondFile)
+                else
                 {
-                    Console.WriteLine("Работа со вторым файлом пропущена.");
-                    return;
+                    Console.WriteLine("Некорректный выбор. Переход к ручному вводу пути к файлу.");
                 }
             }
 
+            while (filePath == null)
+            {
+                Console.Write("Введите путь к файлу: ");
+                filePath = Console.ReadLine();
+
+                if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
+                {
+                    break;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("Файл не найден или путь некорректен. Попробуйте ещё раз.");
+                Console.ResetColor();
+            }
+
+            Console.WriteLine($"Файл успешно найден: {filePath}");
+
+            ProcessFirstFile(filePath);
+        }
+
+        static void CalculateLimitDetection()
+        {
             string secondFilePath = GetSavedFilePath("secondFilePath");
             if (secondFilePath == null || !File.Exists(secondFilePath))
             {
@@ -467,70 +443,6 @@ namespace SignalAnalysis
                     {
                         SaveFilePath("secondFilePath", secondFilePath);
                         break;
-                        static List<string> ReadFileLines(string filePath)
-                        {
-                            try
-                            {
-                                return File.ReadAllLines(filePath).ToList();
-                            }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"Ошибка при чтении файла: {ex.Message}");
-                                return new List<string>();
-                            }
-                        }
-
-                        static bool TryParseMeasurement(string line, out Measurement measurement)
-                        {
-                            measurement = null;
-                            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
-                            Regex regex = new Regex(pattern);
-                            Match match = regex.Match(line);
-
-                            if (match.Success)
-                            {
-                                string dateStr = match.Groups["date"].Value;
-                                string timeStr = match.Groups["time"].Value;
-                                string signalStr = match.Groups["signal"].Value.Replace(',', '.');
-
-                                if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
-                                    && double.TryParse(signalStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double signalVal))
-                                {
-                                    measurement = new Measurement { DateTime = dt, Signal = signalVal };
-                                    return true;
-                                }
-                            }
-
-                            return false;
-                        }
-
-                        static void ProcessFirstFile(string filePath)
-                        {
-                            var lines = ReadFileLines(filePath);
-                            if (lines.Count < 2)
-                            {
-                                Console.WriteLine("Файл не содержит измерений.");
-                                return;
-                            }
-
-                            lines.RemoveAt(0);
-
-                            List<Measurement> measurements = new List<Measurement>();
-
-                            foreach (var line in lines)
-                            {
-                                if (TryParseMeasurement(line, out Measurement measurement))
-                                {
-                                    measurements.Add(measurement);
-                                }
-                                else
-                                {
-                                    Console.WriteLine($"Ошибка при парсинге строки: {line}");
-                                }
-                            }
-
-                            // Остальная часть метода ProcessFirstFile...
-                        }
                     }
 
                     Console.ForegroundColor = ConsoleColor.Red;
@@ -540,7 +452,46 @@ namespace SignalAnalysis
             }
 
             ProcessSecondFile(secondFilePath);
-            Console.ReadLine();
+        }
+
+        static void CalculateVirtualSamples()
+        {
+            Console.WriteLine("Функционал виртуальных проб будет реализован позже.");
+        }
+
+        static void Main(string[] args)
+        {
+            while (true)
+            {
+                Console.WriteLine("Выберите тип расчета:");
+                Console.WriteLine("1. Расчет СКО и разницы");
+                Console.WriteLine("2. Расчет предела обнаружения");
+                Console.WriteLine("3. Виртуальные пробы");
+                Console.WriteLine("4. Выход");
+
+                Console.Write("Введите номер выбора: ");
+                string choice = Console.ReadLine();
+
+                switch (choice)
+                {
+                    case "1":
+                        CalculateStandardDeviationAndDifference();
+                        break;
+                    case "2":
+                        CalculateLimitDetection();
+                        break;
+                    case "3":
+                        CalculateVirtualSamples();
+                        break;
+                    case "4":
+                        return;
+                    default:
+                        Console.WriteLine("Некорректный выбор.");
+                        break;
+                }
+
+                Console.WriteLine();
+            }
         }
     }
 }
