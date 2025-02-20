@@ -556,7 +556,13 @@ namespace SignalAnalysis
                         countAbovePoint2++;
                         Console.ForegroundColor = ConsoleColor.Red;
                     }
-                    string result = $"Предел обнаружения для группы начиная с {i / 5 + 1}-ой группы: {stdDev:F3}";
+
+                    // Calculate the time interval for the group
+                    DateTime startTime = measurements[i * 60].DateTime;
+                    DateTime endTime = measurements[(i + 4) * 60 + 59].DateTime;
+                    string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
+
+                    string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}";
                     Console.WriteLine(result);
                     results.Add(result);
                     Console.ResetColor();
