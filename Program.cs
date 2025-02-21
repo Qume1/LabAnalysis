@@ -11,6 +11,7 @@ namespace SignalAnalysis
 
     class Program
     {
+
         // Метод для расчета стандартного отклонения
         static double CalculateStdDev(List<double> values)
         {
@@ -92,7 +93,7 @@ namespace SignalAnalysis
                 return;
             }
 
-            string pattern = @"(?<value>[-+]?\d+,\d+)\s+(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})";
+            string pattern = @"(?<value>[-+]?\d+[.,]\d+).*?(?<date>\d{2}\.\d{2}\.\d{4}).*?(?<time>\d{2}:\d{2}:\d{2})";
             Regex regex = new Regex(pattern);
 
             List<double> values = new List<double>();
@@ -212,7 +213,7 @@ namespace SignalAnalysis
             lines.RemoveAt(0);
 
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
-            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)";
+            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+[.,]\d+)";
             Regex regex = new Regex(pattern);
 
             List<Measurement> measurements = new List<Measurement>();
@@ -516,7 +517,7 @@ namespace SignalAnalysis
             lines.RemoveAt(0);
 
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
-            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+,\d+)"; 
+            string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+[.,]\d+)";
             Regex regex = new Regex(pattern);
 
             List<Measurement> measurements = new List<Measurement>();
