@@ -488,7 +488,7 @@ namespace SignalAnalysis
         static void ProcessVirtualSamplesFile(string filePath, double divisor)
         {
             var lines = File.ReadAllLines(filePath).ToList();
-            if (lines.Count < 1800 + 60)
+            if (lines.Count < 1800 + 70)
             {
                 Console.WriteLine("Файл не содержит достаточного количества измерений.");
                 return;
@@ -523,7 +523,7 @@ namespace SignalAnalysis
                 }
             }
 
-            if (measurements.Count < 1800 + 60)
+            if (measurements.Count < 1800 + 70)
             {
                 Console.WriteLine("Недостаточно данных для расчёта по 60 измерениям начиная с 1800 строки.");
                 return;
