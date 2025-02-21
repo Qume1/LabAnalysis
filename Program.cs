@@ -93,7 +93,7 @@ namespace SignalAnalysis
                 return;
             }
 
-            string pattern = @"(?<value>[-+]?\d+[.,]\d+).*?(?<date>\d{2}\.\d{2}\.\d{4}).*?(?<time>\d{2}:\d{2}:\d{2})";
+            string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})";
             Regex regex = new Regex(pattern);
 
             List<double> values = new List<double>();
