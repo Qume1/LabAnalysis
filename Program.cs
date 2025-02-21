@@ -484,27 +484,23 @@ namespace SignalAnalysis
         }
 
 
-        // Метод для расчета линии регрессии
-        static double CalculateRegressionLine(List<Measurement> measurements)
+        // Метод для расчета линии регрессии по двум точкам
+        static double CalculateRegressionLine(List<Measurement> beforeSegment, List<Measurement> firstSegment, List<Measurement> lastSegment, List<Measurement> afterSegment)
         {
-            double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-            int n = measurements.Count;
+            double AverageOrZero(List<Measurement> segment) => segment.Count > 0 ? segment.Average(m => m.Signal) : 0;
 
-            for (int i = 0; i < n; i++)
-            {
-                double x = i;
-                double y = measurements[i].Signal;
-                sumX += x;
-                sumY += y;
-                sumXY += x * y;
-                sumX2 += x * x;
-            }
+            double firstPointY = (AverageOrZero(beforeSegment) + AverageOrZero(firstSegment)) / 2;
+            double secondPointY = (AverageOrZero(lastSegment) + AverageOrZero(afterSegment)) / 2;
 
-            double slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-            double intercept = (sumY - slope * sumX) / n;
+            double firstPointX = 0;
+            double secondPointX = 1;
 
-            return slope * (n / 2.0) + intercept; // Линия регрессии в середине
+            double slope = (secondPointY - firstPointY) / (secondPointX - firstPointX);
+            double intercept = firstPointY - slope * firstPointX;
+
+            return slope * 0.5 + intercept;
         }
+
 
         // Метод для обработки файла виртуальных проб
         static void ProcessVirtualSamplesFile(string filePath, double divisor)
@@ -559,9 +555,11 @@ namespace SignalAnalysis
             {
                 var segment = measurements.Skip(i).Take(60).ToList();
                 var beforeSegment = measurements.Skip(i - 5).Take(5).ToList();
-                var afterSegment = measurements.Skip(i + 55).Take(5).ToList();
+                var firstSegment = measurements.Skip(i).Take(5).ToList();
+                var lastSegment = measurements.Skip(i + 55).Take(5).ToList();
+                var afterSegment = measurements.Skip(i + 60).Take(5).ToList();
 
-                double regressionLine = (beforeSegment.Average(m => m.Signal) + afterSegment.Average(m => m.Signal)) / 2;
+                double regressionLine = CalculateRegressionLine(beforeSegment, firstSegment, lastSegment, afterSegment);
                 double area = CalculateAbsoluteArea(segment, regressionLine) / divisor;
                 areas.Add(area);
             }
