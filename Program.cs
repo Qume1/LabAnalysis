@@ -11,14 +11,16 @@ namespace SignalAnalysis
 
     class Program
     {
+        // Метод для расчета стандартного отклонения
         static double CalculateStdDev(List<double> values)
         {
-            if (values.Count < 2) return 0; // Unbiased estimate requires at least two values
+            if (values.Count < 2) return 0; // Несмещенная оценка требует как минимум два значения
             double mean = values.Average();
             double sumSquares = values.Select(x => (x - mean) * (x - mean)).Sum();
-            return Math.Sqrt(sumSquares / (values.Count - 1)); // Use N-1 for unbiased estimate
+            return Math.Sqrt(sumSquares / (values.Count - 1)); // Используем N-1 для несмещенной оценки
         }
 
+        // Метод для сохранения результатов в файл
         static void SaveResultsToFile(string fileName, List<string> results)
         {
             string resultsDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Results");
@@ -33,6 +35,7 @@ namespace SignalAnalysis
             Console.WriteLine($"\nРезультаты сохранены в файл: {resultFilePath}\n");
         }
 
+        // Метод для получения списка текстовых файлов в папке "Signal files"
         static List<string> GetTxtFilesInSignalFolder()
         {
             string signalFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Signal files");
@@ -43,6 +46,7 @@ namespace SignalAnalysis
             return new List<string>();
         }
 
+        // Метод для получения сохраненного пути к файлу из конфигурационного файла
         static string GetSavedFilePath(string key)
         {
             string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
@@ -61,6 +65,7 @@ namespace SignalAnalysis
             return null;
         }
 
+        // Метод для сохранения пути к файлу в конфигурационный файл
         static void SaveFilePath(string key, string filePath)
         {
             string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
@@ -74,9 +79,10 @@ namespace SignalAnalysis
             File.WriteAllLines(configFilePath, lines);
         }
 
+        // Метод для обработки второго файла
         static void ProcessSecondFile(string filePath)
         {
-            var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Skip first three lines
+            var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Пропускаем первые три строки
 
             Console.Write("\nВведите дату измерений (дд.мм.гггг): ");
             string inputDate = Console.ReadLine();
@@ -154,6 +160,7 @@ namespace SignalAnalysis
             SaveResultsToFile(outputFileName, results);
         }
 
+        // Метод для расчета разницы сигнала
         static void CalculateSignalDifference(List<Measurement> measurements, List<string> results)
         {
             int startIndex = measurements.FindIndex(m => (m.DateTime - measurements[0].DateTime).TotalSeconds >= 1800);
@@ -192,6 +199,7 @@ namespace SignalAnalysis
             results.Add(minResult);
         }
 
+        // Метод для обработки первого файла
         static void ProcessFirstFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath).ToList();
@@ -229,7 +237,7 @@ namespace SignalAnalysis
                     }
                 }
             }
-
+                                    
             if (measurements.Count < 30)
             {
                 Console.WriteLine("\nНедостаточно данных для расчёта по 30 измерениям.\n");
@@ -385,6 +393,7 @@ namespace SignalAnalysis
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
         }
 
+        // Метод для расчета стандартного отклонения и разницы
         static void CalculateStandardDeviationAndDifference()
         {
             string filePath = null;
@@ -429,6 +438,7 @@ namespace SignalAnalysis
             ProcessFirstFile(filePath);
         }
 
+        // Метод для расчета предела обнаружения
         static void CalculateLimitDetection()
         {
             string secondFilePath = GetSavedFilePath("secondFilePath");
@@ -454,16 +464,27 @@ namespace SignalAnalysis
             ProcessSecondFile(secondFilePath);
         }
 
-        static double CalculateAreaUnderCurve(List<Measurement> measurements, double regressionLine)
+        // Метод для расчета площади вокруг кривой
+        static double CalculateAbsoluteArea(List<Measurement> measurements, double regressionLine)
         {
             double area = 0;
-            foreach (var measurement in measurements)
+
+            for (int i = 1; i < measurements.Count; i++)
             {
-                area += Math.Abs(measurement.Signal - regressionLine);
+                double y1 = Math.Abs(measurements[i - 1].Signal - regressionLine);
+                double y2 = Math.Abs(measurements[i].Signal - regressionLine);
+
+                // Метод трапеций: (y1 + y2) / 2 * dx, где dx = 1
+                double trapezoidArea = (y1 + y2) / 2;
+
+                area += trapezoidArea;
             }
+
             return area;
         }
 
+
+        // Метод для расчета линии регрессии
         static double CalculateRegressionLine(List<Measurement> measurements)
         {
             double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
@@ -482,9 +503,10 @@ namespace SignalAnalysis
             double slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
             double intercept = (sumY - slope * sumX) / n;
 
-            return slope * (n / 2.0) + intercept; // Regression line at the midpoint
+            return slope * (n / 2.0) + intercept; // Линия регрессии в середине
         }
 
+        // Метод для обработки файла виртуальных проб
         static void ProcessVirtualSamplesFile(string filePath, double divisor)
         {
             var lines = File.ReadAllLines(filePath).ToList();
@@ -540,7 +562,7 @@ namespace SignalAnalysis
                 var afterSegment = measurements.Skip(i + 55).Take(5).ToList();
 
                 double regressionLine = (beforeSegment.Average(m => m.Signal) + afterSegment.Average(m => m.Signal)) / 2;
-                double area = CalculateAreaUnderCurve(segment, regressionLine) / divisor;
+                double area = CalculateAbsoluteArea(segment, regressionLine) / divisor;
                 areas.Add(area);
             }
 
@@ -577,6 +599,7 @@ namespace SignalAnalysis
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath) + "_VirtualSamples", results);
         }
 
+        // Метод для расчета виртуальных проб
         static void CalculateVirtualSamples()
         {
             string filePath = null;
@@ -628,6 +651,7 @@ namespace SignalAnalysis
             ProcessVirtualSamplesFile(filePath, divisor);
         }
 
+        // Метод для очистки конфигурационного файла
         static void ClearConfigFile()
         {
             string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
