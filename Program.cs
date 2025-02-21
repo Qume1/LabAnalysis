@@ -465,14 +465,14 @@ namespace SignalAnalysis
         }
 
         // Метод для расчета площади вокруг кривой
-        static double CalculateAbsoluteArea(List<Measurement> measurements, double regressionLine)
+        static double CalculateSignedArea(List<Measurement> measurements, double regressionLine)
         {
             double area = 0;
 
             for (int i = 1; i < measurements.Count; i++)
             {
-                double y1 = Math.Abs(measurements[i - 1].Signal - regressionLine);
-                double y2 = Math.Abs(measurements[i].Signal - regressionLine);
+                double y1 = measurements[i - 1].Signal - regressionLine;
+                double y2 = measurements[i].Signal - regressionLine;
 
                 // Метод трапеций: (y1 + y2) / 2 * dx, где dx = 1
                 double trapezoidArea = (y1 + y2) / 2;
@@ -482,6 +482,7 @@ namespace SignalAnalysis
 
             return area;
         }
+
 
 
         // Метод для расчета линии регрессии по двум точкам
@@ -560,7 +561,7 @@ namespace SignalAnalysis
                 var afterSegment = measurements.Skip(i + 60).Take(5).ToList();
 
                 double regressionLine = CalculateRegressionLine(beforeSegment, firstSegment, lastSegment, afterSegment);
-                double area = CalculateAbsoluteArea(segment, regressionLine) / divisor;
+                double area = CalculateSignedArea(segment, regressionLine) / divisor;
                 areas.Add(area);
             }
 
