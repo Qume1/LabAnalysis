@@ -673,7 +673,7 @@ namespace SignalAnalysis
                 Console.WriteLine("Выберите тип расчета:");
                 Console.WriteLine("1. Расчет СКО и разницы");
                 Console.WriteLine("2. Расчет предела обнаружения");
-                Console.WriteLine("3. Виртуальные пробы");
+                Console.WriteLine("3. Расчет предела обнаружения по виртуальным пробам");
                 Console.WriteLine("4. Очистить config.txt");
                 Console.WriteLine("5. Выход");
 
