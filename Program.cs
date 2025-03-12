@@ -30,9 +30,18 @@ namespace SignalAnalysis
                 Directory.CreateDirectory(resultsDirectory);
             }
 
-            string dateTimeNow = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_{dateTimeNow}_Расчет.txt");
-            File.WriteAllLines(resultFilePath, results);
+            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_Расчет.txt");
+
+            // Append results to the file if it already exists
+            if (File.Exists(resultFilePath))
+            {
+                File.AppendAllLines(resultFilePath, results);
+            }
+            else
+            {
+                File.WriteAllLines(resultFilePath, results);
+            }
+
             Console.WriteLine($"\nРезультаты сохранены в файл: {resultFilePath}\n");
         }
 
@@ -200,7 +209,9 @@ namespace SignalAnalysis
             results.Add(minResult);
         }
 
-        // Метод для обработки первого файла
+        // ...existing code...
+
+        // Modify the ProcessFirstFile method to include a call to ProcessVirtualSamplesFile with the same file path and results list
         static void ProcessFirstFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath).ToList();
@@ -392,6 +403,16 @@ namespace SignalAnalysis
             }
 
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
+
+            // Call ProcessVirtualSamplesFile after processing the first file
+            Console.Write("Введите значение для деления площади (по умолчанию 252.1): ");
+            if (!double.TryParse(Console.ReadLine(), out double divisor))
+            {
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 252.1");
+                divisor = 252.1;
+            }
+
+            ProcessVirtualSamplesFile(filePath, divisor, results);
         }
 
         // Метод для расчета стандартного отклонения и разницы
@@ -504,8 +525,8 @@ namespace SignalAnalysis
         }
 
 
-        // Метод для обработки файла виртуальных проб
-        static void ProcessVirtualSamplesFile(string filePath, double divisor)
+        // Update the ProcessVirtualSamplesFile method to accept a results list parameter and append results to it instead of saving to a separate file
+        static void ProcessVirtualSamplesFile(string filePath, double divisor, List<string> results)
         {
             var lines = File.ReadAllLines(filePath).ToList();
             if (lines.Count < 1800 + 70)
@@ -566,7 +587,6 @@ namespace SignalAnalysis
                 areas.Add(area);
             }
 
-            List<string> results = new List<string>();
             for (int i = 0; i <= areas.Count - 5; i += 5)
             {
                 var group = areas.Skip(i).Take(5).ToList();
@@ -596,10 +616,10 @@ namespace SignalAnalysis
             Console.WriteLine($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
             results.Add($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
 
-            SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath) + "_VirtualSamples", results);
+            SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
         }
 
-        // Метод для расчета виртуальных проб
+        // В методе CalculateVirtualSamples добавьте создание списка results и передайте его в ProcessVirtualSamplesFile
         static void CalculateVirtualSamples()
         {
             string filePath = null;
@@ -648,7 +668,8 @@ namespace SignalAnalysis
                 divisor = 252.1;
             }
 
-            ProcessVirtualSamplesFile(filePath, divisor);
+            List<string> results = new List<string>();
+            ProcessVirtualSamplesFile(filePath, divisor, results);
         }
 
         // Метод для очистки конфигурационного файла
