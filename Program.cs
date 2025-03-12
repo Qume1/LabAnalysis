@@ -89,24 +89,44 @@ namespace SignalAnalysis
             File.WriteAllLines(configFilePath, lines);
         }
 
-        // Метод для обработки второго файла
-        static void ProcessSecondFile(string filePath)
-        {
-            var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Пропускаем первые три строки
+        // ...existing code...
 
-            Console.Write("\nВведите дату измерений (дд.мм.гггг): ");
-            string inputDate = Console.ReadLine();
-            if (!DateTime.TryParseExact(inputDate, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime filterDate))
+        // Modify the ProcessSecondFile method to remove the prompt for the file path
+        // Update the ProcessSecondFile method to allow the user to select a file from the same folder as the first file
+        static void ProcessSecondFile(string firstFilePath)
+        {
+            string directory = Path.GetDirectoryName(firstFilePath);
+            List<string> txtFiles = Directory.GetFiles(directory, "*.txt").ToList();
+
+            if (txtFiles.Count == 0)
             {
-                Console.WriteLine("\nНекорректная дата.\n");
+                Console.WriteLine("\nНет доступных файлов для выбора.\n");
                 return;
             }
 
-            string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})";
+            Console.WriteLine("\nНайдены следующие файлы в папке:");
+            for (int i = 0; i < txtFiles.Count; i++)
+            {
+                Console.WriteLine($"\n{i + 1}. {Path.GetFileName(txtFiles[i])}");
+            }
+
+            Console.Write("\nВведите номер файла для выбора: ");
+            if (!int.TryParse(Console.ReadLine(), out int fileIndex) || fileIndex <= 0 || fileIndex > txtFiles.Count)
+            {
+                Console.WriteLine("\nНекорректный выбор.\n");
+                return;
+            }
+
+            string filePath = txtFiles[fileIndex - 1];
+            var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Пропускаем первые три строки
+
+            string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})\s*(?<rangeStart>[-+]?\d+[.,]\d+)\s*-\s*(?<rangeEnd>[-+]?\d+[.,]\d+)";
             Regex regex = new Regex(pattern);
 
             List<double> values = new List<double>();
             List<DateTime> timestamps = new List<DateTime>();
+            List<double> rangeStarts = new List<double>();
+            List<double> rangeEnds = new List<double>();
 
             lines.Reverse();
 
@@ -118,13 +138,18 @@ namespace SignalAnalysis
                     string dateStr = match.Groups["date"].Value;
                     string timeStr = match.Groups["time"].Value;
                     string valueStr = match.Groups["value"].Value.Replace(',', '.');
+                    string rangeStartStr = match.Groups["rangeStart"].Value.Replace(',', '.');
+                    string rangeEndStr = match.Groups["rangeEnd"].Value.Replace(',', '.');
 
                     if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
                         && double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value)
-                        && dt.Date == filterDate.Date)
+                        && double.TryParse(rangeStartStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double rangeStart)
+                        && double.TryParse(rangeEndStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double rangeEnd))
                     {
                         values.Add(value);
                         timestamps.Add(dt);
+                        rangeStarts.Add(rangeStart);
+                        rangeEnds.Add(rangeEnd);
                     }
                 }
             }
@@ -148,13 +173,16 @@ namespace SignalAnalysis
                 DateTime endTime = timestamps[i + 4];
                 string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
 
+                double minRange = rangeStarts[i];
+                double maxRange = rangeEnds[i + 4];
+
                 if (stdDev > 0.2)
                 {
                     countAbovePoint2++;
                     Console.ForegroundColor = ConsoleColor.Red;
                 }
 
-                string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}";
+                string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}, Интервал: {minRange:F2} - {maxRange:F2}";
                 Console.WriteLine(result);
                 results.Add(result);
                 Console.ResetColor();
@@ -166,7 +194,7 @@ namespace SignalAnalysis
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
-            string outputFileName = $"Расчет предела обнаружения - {filterDate:yyyyMMdd}";
+            string outputFileName = $"{Path.GetFileNameWithoutExtension(filePath)}_расчет реальных проб";
             SaveResultsToFile(outputFileName, results);
         }
 
@@ -211,7 +239,9 @@ namespace SignalAnalysis
 
         // ...existing code...
 
-        // Modify the ProcessFirstFile method to include a call to ProcessVirtualSamplesFile with the same file path and results list
+        // Modify the ProcessFirstFile method to remove the output of standard deviation (СКО)
+        // Modify the ProcessFirstFile method to remove the output of standard deviation (СКО)
+        // Only display the average value and percentage in the ProcessFirstFile method
         static void ProcessFirstFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath).ToList();
@@ -249,18 +279,11 @@ namespace SignalAnalysis
                     }
                 }
             }
-                                    
+
             if (measurements.Count < 30)
             {
                 Console.WriteLine("\nНедостаточно данных для расчёта по 30 измерениям.\n");
                 return;
-            }
-
-            Console.Write("\nВведите минимальное значение СКО для вывода: ");
-            if (!double.TryParse(Console.ReadLine(), out double minStdDev))
-            {
-                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0.7");
-                minStdDev = 0.7;
             }
 
             Console.Write("\nВведите начальную строку (в секундах) для расчета процента: ");
@@ -292,35 +315,15 @@ namespace SignalAnalysis
                 {
                     stdDevs.Add(stdDev);
 
-                    if (stdDev > minStdDev)
+                    if (stdDev > 0.7)
                     {
-                        hasStdDevAbovePoint5 = true;
-
-                        if (stdDev > 0.7)
-                        {
-                            countAbovePoint7++;
-                            Console.ForegroundColor = ConsoleColor.Red;
-                            string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
-                            Console.WriteLine(result);
-                            results.Add(result);
-                            Console.ResetColor();
-                        }
-                        else
-                        {
-                            countInRange++;
-                            string result = $"{lastMeasurement.DateTime.ToString("dd.MM.yyyy HH:mm:ss")} ({timeSinceStart.TotalSeconds:F0} секунд) - СКО: {stdDev:F3}";
-                            Console.WriteLine(result);
-                            results.Add(result);
-                        }
+                        countAbovePoint7++;
+                    }
+                    else
+                    {
+                        countInRange++;
                     }
                 }
-            }
-
-            if (!hasStdDevAbovePoint5)
-            {
-                string noStdDevAbovePoint5Message = $"\nНет значений СКО выше {minStdDev}\n";
-                Console.WriteLine(noStdDevAbovePoint5Message);
-                results.Add(noStdDevAbovePoint5Message);
             }
 
             double percentageAbovePoint7 = (double)countAbovePoint7 / measurements.Count * 100;
@@ -405,7 +408,7 @@ namespace SignalAnalysis
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath), results);
 
             // Call ProcessVirtualSamplesFile after processing the first file
-            Console.Write("Введите значение для деления площади (по умолчанию 252.1): ");
+            Console.Write("Введите калибровочный коэффициент A(коэффициент градуировки) (по умолчанию 252.1): ");
             if (!double.TryParse(Console.ReadLine(), out double divisor))
             {
                 Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 252.1");
