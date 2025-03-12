@@ -30,7 +30,7 @@ namespace SignalAnalysis
                 Directory.CreateDirectory(resultsDirectory);
             }
 
-            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_Расчет.txt");
+            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}.txt");
 
             // Append results to the file if it already exists
             if (File.Exists(resultFilePath))
@@ -91,8 +91,6 @@ namespace SignalAnalysis
 
         // ...existing code...
 
-        // Modify the ProcessSecondFile method to remove the prompt for the file path
-        // Update the ProcessSecondFile method to allow the user to select a file from the same folder as the first file
         static void ProcessSecondFile(string firstFilePath)
         {
             string directory = Path.GetDirectoryName(firstFilePath);
@@ -194,7 +192,7 @@ namespace SignalAnalysis
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
-            string outputFileName = $"{Path.GetFileNameWithoutExtension(filePath)}_расчет реальных проб";
+            string outputFileName = $"{Path.GetFileNameWithoutExtension(filePath)} Расчет реальных проб";
             SaveResultsToFile(outputFileName, results);
         }
 
@@ -697,9 +695,7 @@ namespace SignalAnalysis
                 Console.WriteLine("Выберите тип расчета:");
                 Console.WriteLine("1. Расчет СКО и разницы");
                 Console.WriteLine("2. Расчет предела обнаружения");
-                Console.WriteLine("3. Расчет предела обнаружения по виртуальным пробам");
-                Console.WriteLine("4. Очистить config.txt");
-                Console.WriteLine("5. Выход");
+                Console.WriteLine("3. Выход");
 
                 Console.Write("Введите номер выбора: ");
                 string choice = Console.ReadLine();
@@ -713,12 +709,6 @@ namespace SignalAnalysis
                         CalculateLimitDetection();
                         break;
                     case "3":
-                        CalculateVirtualSamples();
-                        break;
-                    case "4":
-                        ClearConfigFile();
-                        break;
-                    case "5":
                         return;
                     default:
                         Console.WriteLine("Некорректный выбор.");
