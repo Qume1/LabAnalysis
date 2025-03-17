@@ -544,7 +544,12 @@ namespace SignalAnalysis
                     DateTime endTime = measurements[(i + 4) * 60 + 59].DateTime;
                     string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
 
-                    string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}";
+                    // Calculate the line numbers for the group
+                    int startLine = i * 60 + 1 + 1799;
+                    int endLine = (i + 4) * 60 + 60 + 1800;
+                    string lineNumbers = $"{startLine} - {endLine}";
+
+                    string result = $"Предел обнаружения: {stdDev:F3} {timeInterval} (Строки: {lineNumbers})";
                     Console.WriteLine(result);
                     results.Add(result);
                     Console.ResetColor();
