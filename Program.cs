@@ -30,8 +30,7 @@ namespace SignalAnalysis
                 Directory.CreateDirectory(resultsDirectory);
             }
 
-            string dateTimeNow = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_{dateTimeNow}_Расчет.txt");
+            string resultFilePath = Path.Combine(resultsDirectory, $"{fileName}_Расчет.txt");
             File.WriteAllLines(resultFilePath, results);
             Console.WriteLine($"\nРезультаты сохранены в файл: {resultFilePath}\n");
         }
@@ -115,7 +114,7 @@ namespace SignalAnalysis
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
-            string outputFileName = $"Расчет предела обнаружения";
+            string outputFileName = Path.GetFileNameWithoutExtension(filePath);
             SaveResultsToFile(outputFileName, results);
         }
 
