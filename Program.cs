@@ -47,51 +47,10 @@ namespace SignalAnalysis
             return new List<string>();
         }
 
-        // Метод для получения сохраненного пути к файлу из конфигурационного файла
-        static string GetSavedFilePath(string key)
-        {
-            string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
-            if (File.Exists(configFilePath))
-            {
-                var lines = File.ReadAllLines(configFilePath);
-                foreach (var line in lines)
-                {
-                    var parts = line.Split('=');
-                    if (parts.Length == 2 && parts[0] == key)
-                    {
-                        return parts[1];
-                    }
-                }
-            }
-            return null;
-        }
-
-        // Метод для сохранения пути к файлу в конфигурационный файл
-        static void SaveFilePath(string key, string filePath)
-        {
-            string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
-            var lines = new List<string>();
-            if (File.Exists(configFilePath))
-            {
-                lines = File.ReadAllLines(configFilePath).ToList();
-            }
-            lines.RemoveAll(line => line.StartsWith(key + "="));
-            lines.Add($"{key}={filePath}");
-            File.WriteAllLines(configFilePath, lines);
-        }
-
         // Метод для обработки второго файла
         static void ProcessSecondFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Пропускаем первые три строки
-
-            Console.Write("\nВведите дату измерений (дд.мм.гггг): ");
-            string inputDate = Console.ReadLine();
-            if (!DateTime.TryParseExact(inputDate, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime filterDate))
-            {
-                Console.WriteLine("\nНекорректная дата.\n");
-                return;
-            }
 
             string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})";
             Regex regex = new Regex(pattern);
@@ -111,8 +70,7 @@ namespace SignalAnalysis
                     string valueStr = match.Groups["value"].Value.Replace(',', '.');
 
                     if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
-                        && double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value)
-                        && dt.Date == filterDate.Date)
+                        && double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value))
                     {
                         values.Add(value);
                         timestamps.Add(dt);
@@ -157,7 +115,7 @@ namespace SignalAnalysis
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
-            string outputFileName = $"Расчет предела обнаружения - {filterDate:yyyyMMdd}";
+            string outputFileName = $"Расчет предела обнаружения";
             SaveResultsToFile(outputFileName, results);
         }
 
@@ -442,27 +400,30 @@ namespace SignalAnalysis
         // Метод для расчета предела обнаружения
         static void CalculateLimitDetection()
         {
-            string secondFilePath = GetSavedFilePath("secondFilePath");
-            if (secondFilePath == null || !File.Exists(secondFilePath))
+            List<string> txtFiles = GetTxtFilesInSignalFolder();
+            if (txtFiles.Count == 0)
             {
-                while (true)
-                {
-                    Console.Write("\nВведите путь ко второму файлу: ");
-                    secondFilePath = Console.ReadLine();
-
-                    if (!string.IsNullOrWhiteSpace(secondFilePath) && File.Exists(secondFilePath))
-                    {
-                        SaveFilePath("secondFilePath", secondFilePath);
-                        break;
-                    }
-
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("\nФайл не найден или путь некорректен. Попробуйте ещё раз.\n");
-                    Console.ResetColor();
-                }
+                Console.WriteLine("\nВ папке 'Signal files' не найдены текстовые файлы.\n");
+                return;
             }
 
-            ProcessSecondFile(secondFilePath);
+            Console.WriteLine("\nНайдены следующие файлы в папке 'Signal files':");
+            for (int i = 0; i < txtFiles.Count; i++)
+            {
+                Console.WriteLine($"\n{i + 1}. {Path.GetFileName(txtFiles[i])}");
+            }
+
+            Console.Write("\nВведите номер файла для выбора: ");
+            if (int.TryParse(Console.ReadLine(), out int fileIndex) && fileIndex > 0 && fileIndex <= txtFiles.Count)
+            {
+                string secondFilePath = txtFiles[fileIndex - 1];
+                Console.WriteLine($"\nФайл успешно найден: {secondFilePath}\n");
+                ProcessSecondFile(secondFilePath);
+            }
+            else
+            {
+                Console.WriteLine("\nНекорректный выбор файла.\n");
+            }
         }
 
         // Метод для расчета площади вокруг кривой
@@ -651,21 +612,6 @@ namespace SignalAnalysis
             ProcessVirtualSamplesFile(filePath, divisor);
         }
 
-        // Метод для очистки конфигурационного файла
-        static void ClearConfigFile()
-        {
-            string configFilePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config.txt");
-            if (File.Exists(configFilePath))
-            {
-                File.WriteAllText(configFilePath, string.Empty);
-                Console.WriteLine("Файл config.txt успешно очищен.");
-            }
-            else
-            {
-                Console.WriteLine("Файл config.txt не найден.");
-            }
-        }
-
         static void Main(string[] args)
         {
             while (true)
@@ -674,8 +620,7 @@ namespace SignalAnalysis
                 Console.WriteLine("1. Расчет СКО и разницы");
                 Console.WriteLine("2. Расчет предела обнаружения");
                 Console.WriteLine("3. Расчет предела обнаружения по виртуальным пробам");
-                Console.WriteLine("4. Очистить config.txt");
-                Console.WriteLine("5. Выход");
+                Console.WriteLine("4. Выход");
 
                 Console.Write("Введите номер выбора: ");
                 string choice = Console.ReadLine();
@@ -692,9 +637,6 @@ namespace SignalAnalysis
                         CalculateVirtualSamples();
                         break;
                     case "4":
-                        ClearConfigFile();
-                        break;
-                    case "5":
                         return;
                     default:
                         Console.WriteLine("Некорректный выбор.");
