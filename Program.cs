@@ -49,64 +49,91 @@ namespace SignalAnalysis
         // Метод для обработки второго файла
         static void ProcessSecondFile(string filePath)
         {
-            var lines = File.ReadAllLines(filePath).Skip(3).ToList(); // Пропускаем первые три строки
+            var lines = File.ReadAllLines(filePath).ToList();
+            bool skipFirstThreeLines = true;
 
-            string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})";
-            Regex regex = new Regex(pattern);
-
-            List<double> values = new List<double>();
-            List<DateTime> timestamps = new List<DateTime>();
-
-            lines.Reverse();
-
-            foreach (var line in lines)
+            for (int i = 0; i < 3 && i < lines.Count; i++)
             {
-                Match match = regex.Match(line);
-                if (match.Success)
+                if (Regex.IsMatch(lines[i], @"\d"))
                 {
-                    string dateStr = match.Groups["date"].Value;
-                    string timeStr = match.Groups["time"].Value;
-                    string valueStr = match.Groups["value"].Value.Replace(',', '.');
-
-                    if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
-                        && double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value))
-                    {
-                        values.Add(value);
-                        timestamps.Add(dt);
-                    }
+                    skipFirstThreeLines = false;
+                    break;
                 }
             }
 
-            if (values.Count < 5)
+            if (skipFirstThreeLines)
             {
-                Console.WriteLine("\nНедостаточно данных для расчёта.\n");
-                return;
+                lines = lines.Skip(3).ToList();
             }
+
+            // Update the regex pattern to include the new number range pattern
+            string pattern = @"(?<value>[-+]?\d+[.,]\d+)\s*(?<date>\d{2}\.\d{2}\.\d{4})\s*(?<time>\d{2}:\d{2}:\d{2})\s*(?<range>(?<min>[-+]?\d+[.,]\d+)\s*-\s*(?<max>[-+]?\d+[.,]\d+))?";
+            Regex regex = new Regex(pattern);
 
             List<string> results = new List<string>();
             int countAbovePoint2 = 0;
             int totalCount = 0;
 
-            for (int i = 0; i <= values.Count - 5; i += 5)
+            lines.Reverse(); // Reverse the lines to process from bottom to top
+
+            for (int i = 0; i <= lines.Count - 5; i += 5)
             {
-                var window = values.Skip(i).Take(5).ToList();
-                double stdDev = CalculateStdDev(window) * 3;
+                List<double> values = new List<double>();
+                List<DateTime> timestamps = new List<DateTime>();
+                double minValue = double.MaxValue;
+                double maxValue = double.MinValue;
+                bool hasRange = false;
 
-                DateTime startTime = timestamps[i];
-                DateTime endTime = timestamps[i + 4];
-                string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
-
-                if (stdDev > 0.2)
+                for (int j = i; j < i + 5; j++)
                 {
-                    countAbovePoint2++;
-                    Console.ForegroundColor = ConsoleColor.Red;
+                    Match match = regex.Match(lines[j]);
+                    if (match.Success)
+                    {
+                        string dateStr = match.Groups["date"].Value;
+                        string timeStr = match.Groups["time"].Value;
+                        string valueStr = match.Groups["value"].Value.Replace(',', '.');
+                        string minStr = match.Groups["min"].Value.Replace(',', '.');
+                        string maxStr = match.Groups["max"].Value.Replace(',', '.');
+
+                        if (DateTime.TryParseExact(dateStr + " " + timeStr, "dd.MM.yyyy HH:mm:ss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime dt)
+                            && double.TryParse(valueStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double value))
+                        {
+                            values.Add(value);
+                            timestamps.Add(dt);
+
+                            if (double.TryParse(minStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double min)
+                                && double.TryParse(maxStr, NumberStyles.Any, CultureInfo.InvariantCulture, out double max))
+                            {
+                                minValue = Math.Min(minValue, min);
+                                maxValue = Math.Max(maxValue, max);
+                                hasRange = true;
+                            }
+                        }
+                    }
                 }
 
-                string result = $"Предел обнаружения: {stdDev:F3} {timeInterval}";
-                Console.WriteLine(result);
-                results.Add(result);
-                Console.ResetColor();
-                totalCount++;
+                if (values.Count == 5)
+                {
+                    double stdDev = CalculateStdDev(values) * 3;
+
+                    DateTime startTime = timestamps.First();
+                    DateTime endTime = timestamps.Last();
+                    string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
+
+                    if (stdDev > 0.2)
+                    {
+                        countAbovePoint2++;
+                        Console.ForegroundColor = ConsoleColor.Red;
+                    }
+
+                    string result = hasRange
+                        ? $"Предел обнаружения: {stdDev:F3} {timeInterval} {minValue:F2} - {maxValue:F2})"
+                        : $"Предел обнаружения: {stdDev:F3} {timeInterval}";
+                    Console.WriteLine(result);
+                    results.Add(result);
+                    Console.ResetColor();
+                    totalCount++;
+                }
             }
 
             double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
@@ -161,13 +188,25 @@ namespace SignalAnalysis
         static void ProcessFirstFile(string filePath)
         {
             var lines = File.ReadAllLines(filePath).ToList();
+            
+            // Check if the number of lines is less than 1800
+            if (lines.Count < 1800)
+            {
+                Console.WriteLine("\nФайл содержит менее 1800 строк. Недостаточно данных для обработки.\n");
+                return;
+            }
+
             if (lines.Count < 2)
             {
                 Console.WriteLine("\nФайл не содержит измерений.\n");
                 return;
             }
 
-            lines.RemoveAt(0);
+            // Check if the first line contains numbers and remove it if true
+            if (Regex.IsMatch(lines[0], @"\d"))
+            {
+                lines.RemoveAt(0);
+            }
 
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
             string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+[.,]\d+)";
@@ -372,7 +411,8 @@ namespace SignalAnalysis
                 }
                 else
                 {
-                    Console.WriteLine("\nНекорректный выбор. Переход к ручному вводу пути к файлу.\n");
+                    Console.WriteLine("\nНекорректный выбор. Попробуйте ещё раз.\n");
+                    return;
                 }
             }
 
@@ -468,13 +508,19 @@ namespace SignalAnalysis
         static void ProcessVirtualSamplesFile(string filePath, double divisor)
         {
             var lines = File.ReadAllLines(filePath).ToList();
+           
+
             if (lines.Count < 1800 + 70)
             {
                 Console.WriteLine("Файл не содержит достаточного количества измерений.");
                 return;
             }
 
-            lines.RemoveAt(0);
+            // Check if the first line contains numbers and remove it if true
+            if (Regex.IsMatch(lines[0], @"\d"))
+            {
+                lines.RemoveAt(0);
+            }
 
             // Регулярное выражение для извлечения даты, времени и значения сигнала с запятой
             string pattern = @"^(?<date>\d{2}\.\d{2}\.\d{4})\s+(?<time>\d{2}:\d{2}:\d{2})\s+(?<signal>[-+]?\d+[.,]\d+)";
@@ -585,7 +631,8 @@ namespace SignalAnalysis
                 }
                 else
                 {
-                    Console.WriteLine("\nНекорректный выбор. Переход к ручному вводу пути к файлу.\n");
+                    Console.WriteLine("\nНекорректный выбор. Попробуйте ещё раз.\n");
+                    return;
                 }
             }
 
