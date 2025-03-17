@@ -601,7 +601,7 @@ namespace SignalAnalysis
 
             Console.WriteLine($"\nФайл успешно найден: {filePath}\n");
 
-            Console.Write("Введите значение для деления площади (по умолчанию 252.1): ");
+            Console.Write("Введите калибровочный коэффициент А(градуировочный) (по умолчанию 252.1): ");
             if (!double.TryParse(Console.ReadLine(), out double divisor))
             {
                 Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 252.1");
