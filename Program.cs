@@ -588,13 +588,13 @@ namespace SignalAnalysis
                     }
 
                     // Calculate the time interval for the group
-                    DateTime startTime = measurements[i * 60].DateTime;
-                    DateTime endTime = measurements[(i + 4) * 60 + 59].DateTime;
+                    DateTime startTime = measurements[i * intervalSize].DateTime;
+                    DateTime endTime = measurements[(i + 4) * intervalSize + (intervalSize-1)].DateTime;
                     string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
 
                     // Calculate the line numbers for the group
-                    int startLine = i * 60 + 1 + 1799;
-                    int endLine = (i + 4) * 60 + 60 + 1800;
+                    int startLine = i * intervalSize + 1 + 1799;
+                    int endLine = (i + 4) * intervalSize + intervalSize + 1800;
                     string lineNumbers = $"{startLine} - {endLine}";
 
                     string result = $"Предел обнаружения: {stdDev:F3} {timeInterval} (Строки: {lineNumbers})";
