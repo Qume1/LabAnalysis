@@ -505,14 +505,15 @@ namespace SignalAnalysis
 
 
         // Метод для обработки файла виртуальных проб
-        static void ProcessVirtualSamplesFile(string filePath, double divisor)
+        static void ProcessVirtualSamplesFile(string filePath, double divisor, int intervalSize)
         {
             var lines = File.ReadAllLines(filePath).ToList();
            
 
-            if (lines.Count < 1800 + 70)
+            // Update minimum required lines check to use intervalSize
+            if (lines.Count < 1800 + intervalSize + 10)
             {
-                Console.WriteLine("Файл не содержит достаточного количества измерений.");
+                Console.WriteLine($"Файл не содержит достаточного количества измерений для интервала {intervalSize}.");
                 return;
             }
 
@@ -549,9 +550,9 @@ namespace SignalAnalysis
                 }
             }
 
-            if (measurements.Count < 1800 + 70)
+            if (measurements.Count < 1800 + intervalSize + 10)
             {
-                Console.WriteLine("Недостаточно данных для расчёта по 60 измерениям начиная с 1800 строки.");
+                Console.WriteLine($"Недостаточно данных для расчёта по {intervalSize} измерениям начиная с 1800 строки.");
                 return;
             }
 
@@ -559,9 +560,10 @@ namespace SignalAnalysis
             int countAbovePoint2 = 0;
             int totalCount = 0;
 
-            for (int i = 1800; i <= measurements.Count - 60; i += 70) // 60 lines segment with 10 lines gap
+            // Update the loop to use intervalSize
+            for (int i = 1800; i <= measurements.Count - intervalSize; i += (intervalSize + 10)) // intervalSize lines segment with 10 lines gap
             {
-                var segment = measurements.Skip(i).Take(60).ToList();
+                var segment = measurements.Skip(i).Take(intervalSize).ToList();
                 var beforeSegment = measurements.Skip(i - 5).Take(5).ToList();
                 var firstSegment = measurements.Skip(i).Take(5).ToList();
                 var lastSegment = measurements.Skip(i + 55).Take(5).ToList();
@@ -660,7 +662,14 @@ namespace SignalAnalysis
                 divisor = 252.1;
             }
 
-            ProcessVirtualSamplesFile(filePath, divisor);
+            Console.Write("Введите размер интервала для расчета площади (по умолчанию 60): ");
+            if (!int.TryParse(Console.ReadLine(), out int intervalSize) || intervalSize < 1)
+            {
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 60");
+                intervalSize = 60;
+            }
+
+            ProcessVirtualSamplesFile(filePath, divisor, intervalSize);
         }
 
         static void Main(string[] args)
