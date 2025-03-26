@@ -127,8 +127,8 @@ namespace SignalAnalysis
                     }
 
                     string result = hasRange
-                        ? $"Предел обнаружения: {stdDev:F3} {timeInterval} {minValue:F2} - {maxValue:F2})"
-                        : $"Предел обнаружения: {stdDev:F3} {timeInterval}";
+                        ? $"Предел детектирования: {stdDev:F3} {timeInterval} {minValue:F2} - {maxValue:F2})"
+                        : $"Предел детектирования: {stdDev:F3} {timeInterval}";
                     Console.WriteLine(result);
                     results.Add(result);
                     Console.ResetColor();
@@ -137,7 +137,7 @@ namespace SignalAnalysis
             }
 
             double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
-            string percentageResult = $"\nПроцент превышений Предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%\n";
+            string percentageResult = $"\nПроцент превышений Предела детектирования выше 0.2: {percentageAbovePoint2:F3}%\n";
             Console.WriteLine(percentageResult);
             results.Add(percentageResult);
 
@@ -244,8 +244,8 @@ namespace SignalAnalysis
             Console.Write("\nВведите минимальное значение СКО для вывода: ");
             if (!double.TryParse(Console.ReadLine(), out double minStdDev))
             {
-                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0.7");
-                minStdDev = 0.7;
+                Console.WriteLine("Некорректное значение. Используется значение по умолчанию: 0.5");
+                minStdDev = 0.5;
             }
 
             Console.Write("\nВведите начальную строку (в секундах) для расчета процента: ");
@@ -281,7 +281,7 @@ namespace SignalAnalysis
                     {
                         hasStdDevAbovePoint5 = true;
 
-                        if (stdDev > 0.7)
+                        if (stdDev > 0.5)
                         {
                             countAbovePoint7++;
                             Console.ForegroundColor = ConsoleColor.Red;
@@ -311,7 +311,7 @@ namespace SignalAnalysis
             double percentageAbovePoint7 = (double)countAbovePoint7 / measurements.Count * 100;
 
             Console.WriteLine();
-            string resultAbovePoint7 = $"\nПроцент превышений СКО выше 0.7: {percentageAbovePoint7:F3}%\n";
+            string resultAbovePoint7 = $"\nПроцент превышений СКО выше 0.5: {percentageAbovePoint7:F3}%\n";
             Console.WriteLine(resultAbovePoint7);
             results.Add(resultAbovePoint7);
 
@@ -436,7 +436,7 @@ namespace SignalAnalysis
             ProcessFirstFile(filePath);
         }
 
-        // Метод для расчета предела обнаружения
+        // Метод для расчета предела детектирования
         static void CalculateLimitDetection()
         {
             List<string> txtFiles = GetTxtFilesInSignalFolder();
@@ -511,7 +511,7 @@ namespace SignalAnalysis
            
 
             // Update minimum required lines check to use intervalSize
-            if (lines.Count < 1800 + intervalSize + 10)
+            if (lines.Count < 1800 + intervalSize + 18)
             {
                 Console.WriteLine($"Файл не содержит достаточного количества измерений для интервала {intervalSize}.");
                 return;
@@ -550,7 +550,7 @@ namespace SignalAnalysis
                 }
             }
 
-            if (measurements.Count < 1800 + intervalSize + 10)
+            if (measurements.Count < 1800 + intervalSize + 18)
             {
                 Console.WriteLine($"Недостаточно данных для расчёта по {intervalSize} измерениям начиная с 1800 строки.");
                 return;
@@ -561,13 +561,13 @@ namespace SignalAnalysis
             int totalCount = 0;
 
             // Update the loop to use intervalSize
-            for (int i = 1800; i <= measurements.Count - intervalSize; i += (intervalSize + 10)) // intervalSize lines segment with 10 lines gap
+            for (int i = 1800; i <= measurements.Count - intervalSize; i += (intervalSize + 18)) // intervalSize lines segment with 18 lines gap
             {
                 var segment = measurements.Skip(i).Take(intervalSize).ToList();
-                var beforeSegment = measurements.Skip(i - 5).Take(5).ToList();
-                var firstSegment = measurements.Skip(i).Take(5).ToList();
-                var lastSegment = measurements.Skip(i + 55).Take(5).ToList();
-                var afterSegment = measurements.Skip(i + 60).Take(5).ToList();
+                var beforeSegment = measurements.Skip(i - 9).Take(9).ToList();
+                var firstSegment = measurements.Skip(i).Take(1).ToList();
+                var lastSegment = measurements.Skip(i + intervalSize - 1).Take(1).ToList();
+                var afterSegment = measurements.Skip(i + intervalSize).Take(9).ToList();
 
                 double regressionLine = CalculateRegressionLine(beforeSegment, firstSegment, lastSegment, afterSegment);
                 double area = CalculateSignedArea(segment, regressionLine) / divisor;
@@ -588,16 +588,16 @@ namespace SignalAnalysis
                     }
 
                     // Calculate the time interval for the group
-                    DateTime startTime = measurements[i * intervalSize].DateTime;
-                    DateTime endTime = measurements[(i + 4) * intervalSize + (intervalSize-1)].DateTime;
+                    DateTime startTime = measurements[1800 + i * (intervalSize + 18)].DateTime;
+                    DateTime endTime = measurements[1800 + (i + 4) * (intervalSize + 18) + (intervalSize - 1)].DateTime;
                     string timeInterval = $"(с {startTime:HH:mm:ss} по {endTime:HH:mm:ss})";
 
                     // Calculate the line numbers for the group
-                    int startLine = i * intervalSize + 1 + 1799;
-                    int endLine = (i + 4) * intervalSize + intervalSize + 1800;
+                    int startLine = 1800 + i * (intervalSize + 18) + 1;
+                    int endLine = 1800 + (i + 4) * (intervalSize + 18) + intervalSize;
                     string lineNumbers = $"{startLine} - {endLine}";
 
-                    string result = $"Предел обнаружения: {stdDev:F3} {timeInterval} (Строки: {lineNumbers})";
+                    string result = $"Предел детектирования: {stdDev:F3} {timeInterval} (Строки: {lineNumbers})";
                     Console.WriteLine(result);
                     results.Add(result);
                     Console.ResetColor();
@@ -606,8 +606,8 @@ namespace SignalAnalysis
             }
 
             double percentageAbovePoint2 = (double)countAbovePoint2 / totalCount * 100;
-            Console.WriteLine($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
-            results.Add($"Процент превышений предела обнаружения выше 0.2: {percentageAbovePoint2:F3}%");
+            Console.WriteLine($"Процент превышений предела детектирования выше 0.2: {percentageAbovePoint2:F3}%");
+            results.Add($"Процент превышений предела детектирования выше 0.2: {percentageAbovePoint2:F3}%");
 
             SaveResultsToFile(Path.GetFileNameWithoutExtension(filePath) + "_VirtualSamples", results);
         }
@@ -678,8 +678,8 @@ namespace SignalAnalysis
             {
                 Console.WriteLine("Выберите тип расчета:");
                 Console.WriteLine("1. Расчет СКО и разницы");
-                Console.WriteLine("2. Расчет предела обнаружения");
-                Console.WriteLine("3. Расчет предела обнаружения по виртуальным пробам");
+                Console.WriteLine("2. Расчет предела детектирования");
+                Console.WriteLine("3. Расчет предела детектирования по виртуальным пробам");
                 Console.WriteLine("4. Выход");
 
                 Console.Write("Введите номер выбора: ");
